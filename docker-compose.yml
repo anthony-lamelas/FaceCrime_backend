@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8443:8443"
+    environment:
+      - JINA_API_KEY=${JINA_API_KEY}
+      - BESTBUY_API_KEY=${BESTBUY_API_KEY}
+    restart: always
