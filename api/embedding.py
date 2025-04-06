@@ -1,7 +1,5 @@
 # api/embedding.py
 
-import fiftyone.brain as fob
-
 import base64
 import requests
 from PIL import Image
