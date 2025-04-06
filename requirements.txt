@@ -28,7 +28,7 @@ numpy==2.1.2
 orjson==3.10.10
 packaging==24.1
 pillow==10.4.0
-pip==24.0
+pip==25.0.1
 propcache==0.2.0
 pydantic==2.9.2
 pydantic_core==2.23.4
@@ -52,3 +52,5 @@ uvloop==0.21.0
 watchfiles==0.24.0
 websockets==13.1
 yarl==1.15.2
+motor
+fiftyone

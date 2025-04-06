@@ -1,11 +1,22 @@
 version: '3.8'
 
 services:
-  app:
+  backend:
     build: .
     ports:
       - "8443:8443"
     environment:
+      - MONGODB_URI=mongodb://mongo:27017/business
       - JINA_API_KEY=${JINA_API_KEY}
-      - BESTBUY_API_KEY=${BESTBUY_API_KEY}
     restart: always
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+volumes:
+  mongo-data:
