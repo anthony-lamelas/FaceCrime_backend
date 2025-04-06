@@ -1,4 +1,3 @@
-#nvidia gpu support
 services:
   backend:
     build: .
@@ -6,6 +5,7 @@ services:
       - "8443:8443"
     environment:
       - MONGODB_URI=mongodb://mongo:27017/facecrime
+      - MILVUS_URI=milvus://milvus:19530
       - JINA_API_KEY=${JINA_API_KEY}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
@@ -19,6 +19,7 @@ services:
     restart: always
     depends_on:
       - mongo
+      - milvus
 
   mongo:
     image: mongo:latest
@@ -26,5 +27,24 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/mnt/ssd/facecrime_mongodb
+
+  milvus:
+    image: milvusdb/milvus:latest
+    ports:
+      - "19530:19530"  # Milvus service port
+      - "19121:19121"  # Milvus web UI (if enabled)
+    environment:
+      - TZ=UTC
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - milvus-data:/mnt/ssd/facecrime_milvus
+
 volumes:
   mongo-data:
+  milvus-data:
