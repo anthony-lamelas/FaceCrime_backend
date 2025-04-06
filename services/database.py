@@ -42,11 +42,7 @@ def insert_image_and_metadata(
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                # If your embedding is a Python list, either:
-                # 1) Convert to bracketed string "[0.12,0.34, ...]"
-                # 2) Use an array adaptation
-                # We'll assume bracketed string is not needed if psycopg2
-                # handles vector(768) automatically. If it fails, convert manually.
+                # Insert the embedding as a vector(768)
                 sql = """
                 INSERT INTO facecrime_data
                     (filename, image_base64, embedding, sex, height, weight,
@@ -74,23 +70,22 @@ def insert_image_and_metadata(
 
 def find_similar_image(embedding: list, limit: int = 1):
     """
-    Perform a similarity search using pgvector's <=> operator for
-    cosine similarity (requires 'vector_cosine_ops' index).
-    Because your vectors are normalized, <=> should yield [0..1].
-    We'll order by similarity DESC to get top matches.
+    Perform a similarity search using pgvector's <=> operator, but 
+    we treat <=> as if it were a distance. We compute:
+        matchPercent = 1 - (embedding <=> query_vector)
+    and then ORDER BY matchPercent DESC for top matches.
 
-    Returns a list of records, each with a 'matchPercent' in [0..1].
+    This yields a 0..1 range for matchPercent (clamped if out of range).
     """
     try:
         with get_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                # Query: compute (embedding <=> %s::vector(768)) as match_percent
-                # For normalized embeddings, it's in [-1..1], but typically [0..1].
-                # We'll clamp it to [0..1] in Python, just in case.
+                # We do 1 - (embedding <=> ...) and call that match_percent
+                # Then we sort in descending order so the highest match_percent is first
                 sql = f"""
                 SELECT
                   filename,
-                  image_base64 as image,
+                  image_base64 AS image,
                   sex,
                   height,
                   weight,
@@ -99,9 +94,9 @@ def find_similar_image(embedding: list, limit: int = 1):
                   race,
                   sexOffender,
                   offense,
-                  (embedding <=> %s::vector(768)) AS match_percent
+                  (1 - (embedding <=> %s::vector(768))) AS match_percent
                 FROM facecrime_data
-                ORDER BY (embedding <=> %s::vector(768)) DESC
+                ORDER BY (1 - (embedding <=> %s::vector(768))) DESC
                 LIMIT {limit};
                 """
                 cur.execute(sql, (embedding, embedding))
@@ -109,13 +104,13 @@ def find_similar_image(embedding: list, limit: int = 1):
 
                 results = []
                 for row in rows:
-                    raw_val = float(row["match_percent"])  # e.g. 0.85
-                    # Ensure range [0..1]
+                    raw_val = float(row["match_percent"])
+                    # clamp to [0..1]
                     raw_val = max(0.0, min(1.0, raw_val))
 
                     results.append({
                         "filename": row["filename"],
-                        "image": row["image"],
+                        "image": row["image"],  # base64
                         "sex": row["sex"],
                         "height": row["height"],
                         "weight": row["weight"],
@@ -131,4 +126,3 @@ def find_similar_image(embedding: list, limit: int = 1):
     except Exception as e:
         logger.error(f"Failed to query similar images: {e}")
         return []
-
