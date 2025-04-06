@@ -42,7 +42,7 @@ app = FastAPI(
 )
 
 origins = [
-    "https://facecrime.ai",
+    "https://facecrime.io",
     "https://muchnic.tail9dec88.ts.net",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
