@@ -30,7 +30,7 @@ async def submission(request: Request):
             raise HTTPException(status_code=400, detail="Failed to process image")
         
         # Find the most similar criminal
-        similar_images = await find_similar_image(user_input_embedding, limit=1)
+        similar_images = find_similar_image(user_input_embedding, limit=1)
         if not similar_images:
             logger.warning("No similar images found in the database")
             # Return an empty result or some default
@@ -88,7 +88,7 @@ async def add_image(request: Request):
                 )
         
         # Insert into DB
-        inserted_id = await insert_image_and_metadata(
+        inserted_id = insert_image_and_metadata(
             image_base64=data["image"],
             embedding=data["embedding"],
             sex=data.get("sex", "Unknown"),  # optional
@@ -98,7 +98,8 @@ async def add_image(request: Request):
             eyeColor=data["eyeColor"],
             race=data["race"],
             sexOffender=bool(data["sexOffender"]),
-            offense=data["offense"]
+            offense=data["offense"],
+            filename=data["filename"]
         )
         
         return {"id": inserted_id, "message": "Image + metadata added successfully"}
