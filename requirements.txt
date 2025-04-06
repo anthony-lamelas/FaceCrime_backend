@@ -57,4 +57,4 @@ transformers==4.51.0
 torch==2.6.0
 kagglehub==0.3.11
 pandas
-psycopg2
+psycopg2-binary
