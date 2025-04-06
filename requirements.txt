@@ -54,3 +54,7 @@ websockets==13.1
 yarl==1.15.2
 motor
 fiftyone
+timm
+transformers
+torch
+kagglehub

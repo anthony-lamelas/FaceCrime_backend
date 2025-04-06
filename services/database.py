@@ -14,6 +14,7 @@ MONGODB_URI = os.environ.get("MONGODB_URI")
 if not MONGODB_URI:
     logger.warning("MONGODB_URI not found in environment variables. Using default connection string.")
     MONGODB_URI = "mongodb://mongo:27017/business"
+    # why /business?
 
 # Create a cached client and database instance
 try:

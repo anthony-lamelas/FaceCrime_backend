@@ -51,6 +51,18 @@ async def submission(request: Request):
                 "id": most_similar["id"],
                 "image": most_similar["image_base64"],
                 "similarity_score": most_similar["similarity_score"]
+                # all the stuff that frontend is expecting
+                # {
+                #   "image": "base64EncodedImageString...",
+                #   "offense": "Thoughtcrime, Infosec Protocol Violations, District-7 Regulations",
+                #   "height": "6'1\"",
+                #   "weight": "185 lbs",
+                #   "hairColor": "Brown",
+                #   "eyeColor": "Blue",
+                #   "race": "Caucasian",
+                #   "sexOffender": true,
+                #   "matchPercent": 0.677
+                # }
             }]
         }
     except Exception as e:
