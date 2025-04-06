@@ -28,11 +28,6 @@ logger = logging.getLogger(__name__)
 if not os.environ.get('JINA_API_KEY'):
     logger.warning("JINA_API_KEY not found in environment variables. API calls will fail.")
 
-# Check for MongoDB connection string
-if not os.environ.get('MONGODB_URI'):
-    logger.warning("MONGODB_URI not found in environment variables. Using default local connection.")
-    # For local development - you should set the real connection string in .env
-    os.environ['MONGODB_URI'] = "mongodb://mongo:27017/facecrime"
 
 # Initialize the FastAPI app
 app = FastAPI(
@@ -42,6 +37,7 @@ app = FastAPI(
 )
 
 origins = [
+    "https://www.facecrime.io",
     "https://facecrime.io",
     "https://facecrime.info",
     "https://muchnic.tail9dec88.ts.net",
