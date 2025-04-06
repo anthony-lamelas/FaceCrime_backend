@@ -7,7 +7,7 @@ services:
     ports:
       - "8443:8443"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/business
+      - MONGODB_URI=mongodb://mongo:27017/facecrime
       - JINA_API_KEY=${JINA_API_KEY}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
