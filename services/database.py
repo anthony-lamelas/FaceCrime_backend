@@ -32,7 +32,7 @@ def insert_image_and_metadata(
     offense: str
 ):
     """
-    Insert a row into the 'images' table with a 768-d vector, storing
+    Insert a row into the 'facecrime_data' table with a 768-d vector, storing
     everything in Postgres + pgvector. 'filename' is the PK.
     """
     try:
@@ -41,7 +41,7 @@ def insert_image_and_metadata(
                 # We'll store the embedding as an ARRAY -> cast to vector in SQL
                 # If needed, convert embedding (Python list) to "[...]" string.
                 sql = """
-                INSERT INTO images
+                INSERT INTO facecrime_data
                     (filename, image_base64, embedding, sex, height, weight,
                      hairColor, eyeColor, race, sexOffender, offense, created_at)
                 VALUES
@@ -71,8 +71,8 @@ def find_similar_image(embedding: list, limit: int = 1):
     We convert distance to a 'matchPercent' by computing (1 - distance).
     That yields a value in [0..1] if vectors are normalized or roughly so.
 
-    If the 'images' table is indexed with:
-      CREATE INDEX ON images USING hnsw (embedding vector_cosine_ops)
+    If the 'facecrime_data' table is indexed with:
+      CREATE INDEX ON facecrime_data USING hnsw (embedding vector_cosine_ops)
       WITH (m=16, ef_construction=128);
 
     Then the <-> operator uses cosine distance (1 - dot_product).
@@ -98,7 +98,7 @@ def find_similar_image(embedding: list, limit: int = 1):
                   sexOffender,
                   offense,
                   (1 - (embedding <-> %s::vector(768))) AS matchPercent
-                FROM images
+                FROM facecrime_data
                 ORDER BY embedding <-> %s::vector(768)
                 LIMIT {limit};
                 """
