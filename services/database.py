@@ -4,45 +4,44 @@ import datetime
 from fastapi import HTTPException
 from motor import motor_asyncio
 
-# Initialize the logger
 logger = logging.getLogger(__name__)
 
-# MongoDB Atlas or local connection string (from environment)
-MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://mongo:27017/business")
+# The default is local Mongo (community), named "facecrime"
+MONGODB_URI = os.environ.get("MONGODB_URI", "mongodb://mongo:27017/facecrime")
 logger.info(f"Using MONGODB_URI={MONGODB_URI}")
 
-# Create a cached client and database instance
 try:
     client = motor_asyncio.AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-    db = client.business  # 'business' database
+    db = client.get_database()  # if using facecrime in the URI, that’s your default
     logger.info("Connected to MongoDB successfully")
 except Exception as e:
     logger.error(f"Failed to connect to MongoDB: {str(e)}")
     raise HTTPException(status_code=500, detail="Database connection error")
 
-
 async def ensure_vector_index():
     """
-    Ensure that we have a HNSW vector index on the 'embedding' field of the 'images' collection.
+    Attempts to create a HNSW vector index for Atlas or Enterprise 7.0+.
+    If running local/community, it fails and logs a warning—then we rely on fallback.
     """
     try:
         collection = db.images
         existing_indexes = await collection.index_information()
         if "embedding_vector_index" not in existing_indexes:
-            logger.info("Creating vector search index for embeddings...")
-            # Create the HNSW vector index
+            logger.info("Attempting to create vector search index for embeddings...")
             await collection.create_index(
                 [("embedding", "vectorHNSW")],
                 name="embedding_vector_index",
-                # Make sure this dimension matches your actual embedding size from CLIP
-                vectorDimension=512,  
+                vectorDimension=512,
                 vectorDistanceMetric="cosine"
             )
             logger.info("HNSW vector index created successfully")
     except Exception as e:
-        logger.error(f"Failed to create vector index: {str(e)}")
-        # We'll not raise, so the system can still run without the index (though searches might fail or fallback).
-
+        logger.warning(
+            "Vector index creation failed (likely running community Mongo). "
+            "Falling back to basic search.\n"
+            f"Original error: {str(e)}"
+        )
+        # Do NOT re-raise; just skip so the rest can run
 
 async def insert_image_and_metadata(
     image_base64: str,
@@ -58,11 +57,10 @@ async def insert_image_and_metadata(
 ):
     """
     Insert a new image + metadata into the DB,
-    with the vector 'embedding' for vector search,
-    plus all the other fields for retrieval.
+    with the vector 'embedding'.
     """
     try:
-        # Ensure vector index
+        # Attempt vector index creation if missing
         await ensure_vector_index()
         
         collection = db.images
@@ -89,25 +87,22 @@ async def insert_image_and_metadata(
         logger.error(f"Failed to insert image metadata: {str(e)}")
         raise HTTPException(status_code=500, detail="Database operation failed")
 
-
 async def find_similar_image(embedding: list, limit: int = 1):
     """
-    Find the most similar image(s) by performing a vector search.
-    Return all relevant metadata, so the route can shape the response.
+    Attempts to do a $vectorSearch. If it fails (community),
+    we fallback to a basic find() query.
     """
     try:
         await ensure_vector_index()
         collection = db.images
 
-        # Use MongoDB $vectorSearch. 
-        # Adjust numCandidates if your collection is large or small.
         pipeline = [
             {
                 "$vectorSearch": {
                     "index": "embedding_vector_index",
                     "path": "embedding",
                     "queryVector": embedding,
-                    "numCandidates": 150000,
+                    "numCandidates": 100,  # or 150000, your call
                     "limit": limit
                 }
             },
@@ -153,13 +148,12 @@ async def find_similar_image(embedding: list, limit: int = 1):
         return results
 
     except Exception as e:
-        logger.error(f"Failed to find similar images: {str(e)}")
-        # fallback if vectorSearch fails (e.g. no index)
+        logger.warning(f"Vector search failed, falling back to basic find query: {str(e)}")
         try:
-            logger.warning("Vector search failed, falling back to basic find query")
             documents = await collection.find().limit(limit*10).to_list(length=limit*10)
             if not documents:
                 return []
+            # Just return some documents without real similarity ranking
             results = []
             for doc in documents[:limit]:
                 results.append({
