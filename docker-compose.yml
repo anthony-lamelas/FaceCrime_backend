@@ -3,6 +3,7 @@ services:
     build: .
     ports:
       - "8443:8443"
+    network_mode: "host"
     environment:
       - JINA_API_KEY=${JINA_API_KEY}
       - MANUFACTURER_DB_NAME=${MANUFACTURER_DB_NAME}

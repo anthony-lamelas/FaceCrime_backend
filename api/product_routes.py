@@ -4,9 +4,7 @@ from api.embedding import process_embedding
 from services.database import find_similar_image, insert_image_and_metadata
 from typing import Optional
 
-# Initialize the logger
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 @router.post("/submission")
@@ -29,26 +27,23 @@ async def submission(request: Request):
             logger.error("Failed to generate embedding for the input image")
             raise HTTPException(status_code=400, detail="Failed to process image")
         
-        # Find the most similar criminal
+        # Find the most similar record
         similar_images = find_similar_image(user_input_embedding, limit=1)
         if not similar_images:
             logger.warning("No similar images found in the database")
-            # Return an empty result or some default
             return {"results": []}
         
         most_similar = similar_images[0]
-        logger.info(f"Found similar image with similarity score: {most_similar['similarity_score']}")
+        
+        # Log the matchPercent
+        logger.info(f"Found similar image with matchPercent: {most_similar['matchPercent']}")
+        
+        # Round matchPercent
+        matchPercent = round(most_similar["matchPercent"], 3)
 
-        # Convert similarity_score -> matchPercent (0-1 scale or 0-100). 
-        # For example, if your vectorDistanceMetric="cosine", 
-        # similarity_score might be the dot product or something. 
-        # You can interpret it or scale it as you prefer:
-        matchPercent = round(most_similar["similarity_score"], 3)
-
-        # Return the JSON in the exact shape your frontend wants
-        # Example:
+        # Return the JSON in the shape your frontend wants
         response_json = {
-            "image": most_similar["image_base64"],
+            "image": most_similar["image"],     # or "image_base64" if your DB function returns that key
             "offense": most_similar["offense"],
             "height": most_similar["height"],
             "weight": most_similar["weight"],
@@ -75,9 +70,19 @@ async def add_image(request: Request):
     try:
         data = await request.json()
 
-        required_fields = ["image", "embedding", "offense", "height", 
-                           "weight", "hairColor", "eyeColor", "race", 
-                           "sexOffender"]
+        # For storing, we might need a unique filename or row_id
+        required_fields = [
+            "filename",   # PK
+            "image",      # base64
+            "embedding",
+            "offense",
+            "height",
+            "weight",
+            "hairColor",
+            "eyeColor",
+            "race",
+            "sexOffender"
+        ]
         
         # Basic validation
         for field in required_fields:
@@ -87,8 +92,9 @@ async def add_image(request: Request):
                     detail=f"Missing '{field}' in request payload"
                 )
         
-        # Insert into DB
-        inserted_id = insert_image_and_metadata(
+        # Insert into DB (filename is PK)
+        insert_image_and_metadata(
+            filename=data["filename"],
             image_base64=data["image"],
             embedding=data["embedding"],
             sex=data.get("sex", "Unknown"),  # optional
@@ -98,11 +104,10 @@ async def add_image(request: Request):
             eyeColor=data["eyeColor"],
             race=data["race"],
             sexOffender=bool(data["sexOffender"]),
-            offense=data["offense"],
-            filename=data["filename"]
+            offense=data["offense"]
         )
         
-        return {"id": inserted_id, "message": "Image + metadata added successfully"}
+        return {"id": data["filename"], "message": "Image + metadata added successfully"}
 
     except Exception as e:
         logger.exception(f"Error adding image to database: {str(e)}")
