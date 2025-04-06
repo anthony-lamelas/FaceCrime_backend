@@ -17,12 +17,12 @@ async def submission(request: Request):
     try:
         data = await request.json()
         
-        if 'image_or_text' not in data:
-            logger.error("Missing 'image_or_text' field in request")
-            raise HTTPException(status_code=400, detail="Missing 'image_or_text' field in request")
+        if 'image' not in data:
+            logger.error("Missing 'image' field in request")
+            raise HTTPException(status_code=400, detail="Missing 'image' field in request")
         
         # Generate embedding from the image
-        user_input_embedding = process_embedding(data['image_or_text'])
+        user_input_embedding = process_embedding(data['image'])
         if not user_input_embedding:
             logger.error("Failed to generate embedding for the input image")
             raise HTTPException(status_code=400, detail="Failed to process image")
